@@ -1,5 +1,4 @@
 var Twit = require('twit')
-
 var pass = require('./pass.js')
 
 var T = new Twit({
@@ -14,24 +13,17 @@ var BME280 = require('node-bme280');
  
 var barometer = new BME280({address: 0x76});
  
-//ツイート用
-function sendtweet(text){
-	T.post('statuses/update',{status:text} ,function(err, data, response) {
-	  console.log(data)
-	})
-}
-//リプライ用
-function replytweet(text,id,sname){
-	T.post('statuses/update', {status: "@"+sname+" "+text , in_reply_to_status_id : id} ,function(err, data, response) {
-	  console.log(data)
-	})
-}
-
-//  stream a sample of public statuses
-
+//stream a sample of public statuses
 var stream = T.stream('user')
 var num = 0
 var username
+
+sendtweet("Hello\n"+(new Date()))
+
+//温度を定期的にツイート
+setInterval(function() {
+	tweetbarometer()
+}, 1000000);
 
 //リプライ用
 stream.on('tweet', function(tweet) {
@@ -43,7 +35,7 @@ stream.on('tweet', function(tweet) {
   	if (reprly(tweet)){
 		if(tweet.text.indexOf("温度" )!= -1){
 			console.log("test");
-			tweetbarometer(tweet);
+			replybarometer(tweet);
 		}
 	}
 })
@@ -64,14 +56,37 @@ function getTweetTxet(tweet){
 	return tweet.text.replace(/@GameKawanishi/,"")
 }
 
-function tweetbarometer(tweet){
+function replybarometer(tweet){
 	 barometer.begin(function(err) {
    		if (err) {
       		console.info('error initializing barometer', err);
       		return;
     		} 
       barometer.readPressureAndTemparature(function(err, pressure, temperature, humidity){
-			replytweet(pressure.toFixed(2)+"hPa\n"+temperature.toFixed(2)+"C\n"+humidity.toFixed(2)+"%",getTweetid(tweet),getname(tweet));
+			var date = new Date()
+			replytweet("現在の和田家\n"+pressure.toFixed(2)+"hPa\n"+temperature.toFixed(2)+"℃\n"+humidity.toFixed(2)+"%\n"+date,getTweetid(tweet),getname(tweet));
        		});
 	})
 }
+
+function tweetbarometer(){
+	 barometer.begin(function(err) {
+   		if (err) {
+      		console.info('error initializing barometer', err);
+      		return;
+    		} 
+      barometer.readPressureAndTemparature(function(err, pressure, temperature, humidity){
+			var date = new Date()
+			sendtweet("現在の和田家\n"+(pressure/100).toFixed(2)+"hPa\n"+temperature.toFixed(2)+"℃\n"+humidity.toFixed(2)+"%\n"+date);
+       		});
+	})
+}
+
+//ツイート用
+function sendtweet(text){
+	T.post('statuses/update',{status:text})
+}
+//リプライ用
+function replytweet(text,id,sname){
+	T.post('statuses/update', {status: "@"+sname+" "+text , in_reply_to_status_id : id})
+i}
